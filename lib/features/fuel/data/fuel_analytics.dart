@@ -54,16 +54,27 @@ class FuelAnalytics {
       totalFuelCost += current.amount;
     }
 
-    for (final record in records) {
-      if (record.fuelVolume <= 0) {
-        continue;
-      }
+    final validFuelVolumes = records
+        .map((record) => record.fuelVolume)
+        .where((fuelVolume) => fuelVolume > 0)
+        .toList();
 
-      estimatedTankVolume = estimatedTankVolume == null
-          ? record.fuelVolume
-          : record.fuelVolume > estimatedTankVolume
-              ? record.fuelVolume
-              : estimatedTankVolume;
+    if (validFuelVolumes.isNotEmpty) {
+      final averageFuelVolume =
+          validFuelVolumes.fold<double>(0, (total, volume) => total + volume) /
+              validFuelVolumes.length;
+      final minimumRegularFuelVolume = averageFuelVolume / 2;
+      final regularFuelVolumes = validFuelVolumes
+          .where((fuelVolume) => fuelVolume > minimumRegularFuelVolume)
+          .toList();
+
+      if (regularFuelVolumes.isNotEmpty) {
+        estimatedTankVolume = regularFuelVolumes.fold<double>(
+              0,
+              (total, volume) => total + volume,
+            ) /
+            regularFuelVolumes.length;
+      }
     }
 
     final averageFuelEfficiency =

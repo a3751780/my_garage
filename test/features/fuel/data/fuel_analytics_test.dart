@@ -30,13 +30,41 @@ void main() {
       );
 
       expect(analytics.canEstimateRefuel, isTrue);
-      expect(analytics.estimatedTankVolume, 6);
+      expect(analytics.estimatedTankVolume, closeTo(5.333, 0.001));
       expect(analytics.latestFuelEfficiency, closeTo(33.333, 0.001));
-      expect(analytics.estimatedFullTankRange, closeTo(200, 0.001));
+      expect(analytics.estimatedFullTankRange, closeTo(177.777, 0.001));
       expect(analytics.drivenSinceLastFuel, 100);
-      expect(analytics.remainingMileageToRefuel, closeTo(100, 0.001));
-      expect(analytics.nextRefuelMileage, 1600);
-      expect(analytics.refuelProgress, closeTo(0.5, 0.001));
+      expect(analytics.remainingMileageToRefuel, closeTo(77.777, 0.001));
+      expect(analytics.nextRefuelMileage, 1578);
+      expect(analytics.refuelProgress, closeTo(0.562, 0.001));
+    });
+
+    test('excludes small top-up fuel volumes from tank volume estimate', () {
+      final analytics = FuelAnalytics.fromRecords(
+        [
+          _fuelRecord(
+            id: '1',
+            odometer: 1000,
+            fuelVolume: 6,
+            amount: 180,
+          ),
+          _fuelRecord(
+            id: '2',
+            odometer: 1020,
+            fuelVolume: 1,
+            amount: 30,
+          ),
+          _fuelRecord(
+            id: '3',
+            odometer: 1200,
+            fuelVolume: 5,
+            amount: 160,
+          ),
+        ],
+        currentMileage: 1250,
+      );
+
+      expect(analytics.estimatedTankVolume, closeTo(5.5, 0.001));
     });
 
     test('does not estimate refuel mileage with only one record', () {
