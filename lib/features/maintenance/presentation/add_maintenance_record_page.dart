@@ -31,6 +31,7 @@ class _AddMaintenanceRecordPageState
   final _noteController = TextEditingController();
 
   DateTime _servicedAt = DateTime.now();
+  MaintenanceServiceType _serviceType = MaintenanceServiceType.shop;
   bool _isSaving = false;
   String? _errorMessage;
 
@@ -47,6 +48,7 @@ class _AddMaintenanceRecordPageState
       _dateController.text = _formatDisplayDate(record.servicedAt);
       _odometerController.text = record.odometer.toString();
       _amountController.text = record.amount.toString();
+      _serviceType = record.serviceType;
       _noteController.text = record.note ?? '';
       return;
     }
@@ -130,6 +132,31 @@ class _AddMaintenanceRecordPageState
                 validator: _validatePositiveNumber,
               ),
               const SizedBox(height: 16),
+              DropdownButtonFormField<MaintenanceServiceType>(
+                value: _serviceType,
+                decoration: const InputDecoration(
+                  labelText: '施工方式',
+                  prefixIcon: Icon(Icons.handyman_outlined),
+                ),
+                items: MaintenanceServiceType.values
+                    .map(
+                      (type) => DropdownMenuItem(
+                        value: type,
+                        child: Text(type.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _isSaving
+                    ? null
+                    : (value) {
+                        if (value == null) {
+                          return;
+                        }
+
+                        setState(() => _serviceType = value);
+                      },
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _noteController,
                 minLines: 2,
@@ -201,6 +228,7 @@ class _AddMaintenanceRecordPageState
         servicedAt: _servicedAt,
         odometer: int.parse(_odometerController.text.trim()),
         amount: double.parse(_amountController.text.trim()),
+        serviceType: _serviceType,
         note: _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim(),

@@ -38,6 +38,7 @@ class MaintenanceRecordsRepository {
       'serviced_at': _formatDate(input.servicedAt),
       'odometer': input.odometer,
       'amount': input.amount,
+      'service_type': input.serviceType.value,
       'note': input.note,
     });
 
@@ -61,6 +62,7 @@ class MaintenanceRecordsRepository {
           'serviced_at': _formatDate(input.servicedAt),
           'odometer': input.odometer,
           'amount': input.amount,
+          'service_type': input.serviceType.value,
           'note': input.note,
         })
         .eq('id', recordId)

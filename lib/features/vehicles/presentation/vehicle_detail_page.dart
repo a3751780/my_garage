@@ -358,20 +358,16 @@ class _VehicleHeader extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: [
-                      _InfoChip(
-                        icon: Icons.calendar_month_outlined,
-                        label: '${vehicle.year}',
-                      ),
-                      _InfoChip(
-                        icon: Icons.payments_outlined,
-                        label: '\$${vehicle.acquisitionCost.toStringAsFixed(0)}',
-                      ),
-                    ]
-                  ),
+                  Wrap(spacing: 12, runSpacing: 8, children: [
+                    _InfoChip(
+                      icon: Icons.calendar_month_outlined,
+                      label: '${vehicle.year}',
+                    ),
+                    _InfoChip(
+                      icon: Icons.payments_outlined,
+                      label: '\$${vehicle.acquisitionCost.toStringAsFixed(0)}',
+                    ),
+                  ]),
                   const Spacer(),
                   Align(
                     alignment: Alignment.centerRight,
@@ -1497,7 +1493,7 @@ class _MaintenanceRecordsContent extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             const _DataHeader(
-              labels: ['項目', '日期', '里程', '金額', '備註'],
+              labels: ['項目', '日期', '里程', '金額', '方式'],
               flexes: [2, 2, 1, 1, 1],
             ),
             if (records.isEmpty)
@@ -1677,6 +1673,10 @@ class _MaintenanceRecordDialogTile extends ConsumerWidget {
                 _InfoChip(
                   icon: Icons.speed_outlined,
                   label: '${record.odometer} km',
+                ),
+                _InfoChip(
+                  icon: Icons.handyman_outlined,
+                  label: record.serviceType.label,
                 ),
               ],
             ),
@@ -1866,7 +1866,7 @@ class _MaintenanceRecordRow extends ConsumerWidget {
             ),
             _CellText('${record.odometer}'),
             _CellText('\$${record.amount.toStringAsFixed(0)}'),
-            _CellText(record.note ?? '-'),
+            _CellText(record.serviceType.label),
           ],
         ),
       ),

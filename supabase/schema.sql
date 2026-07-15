@@ -154,6 +154,8 @@ create table if not exists public.maintenance_records (
   serviced_at date not null,
   odometer integer not null check (odometer >= 0),
   amount numeric(12, 2) not null default 0 check (amount >= 0),
+  service_type text not null default 'shop'
+    check (service_type in ('shop', 'diy')),
   note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
