@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_providers.dart';
+import 'register_page.dart';
 
 class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
@@ -77,6 +78,19 @@ class LoginPage extends ConsumerWidget {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text('登入'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: state.isLoading
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const RegisterPage(),
+                              ),
+                            );
+                          },
+                    child: const Text('還沒有帳號？建立帳號'),
                   ),
                 ],
               ),

@@ -15,6 +15,16 @@ class AuthRepository {
     );
   }
 
+  Future<AuthResponse> signUp({
+    required String email,
+    required String password,
+  }) {
+    return _client.auth.signUp(
+      email: email,
+      password: password,
+    );
+  }
+
   Future<void> signOut() {
     return _client.auth.signOut();
   }
