@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -40,8 +43,6 @@ class _VehicleDetailPageState extends ConsumerState<VehicleDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -50,7 +51,7 @@ class _VehicleDetailPageState extends ConsumerState<VehicleDetailPage> {
             stretch: true,
             expandedHeight: _vehicleHeaderExpandedHeight,
             backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-            foregroundColor: colorScheme.onSurface,
+            foregroundColor: Colors.white,
             flexibleSpace: _VehicleFlexibleSpace(
               title: _vehicle.model,
               header: _VehicleHeader(
@@ -239,6 +240,7 @@ class _VehicleFlexibleSpace extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                 ),
               ),
@@ -514,7 +516,7 @@ class _OilChangeProgressSection extends ConsumerWidget {
 
   MaintenanceRecord? _findLastOilRecord(List<MaintenanceRecord> records) {
     final oilRecords = records
-        .where((record) => record.item.trim().contains('機油'))
+        .where((record) => record.maintenanceType == MaintenanceType.oilChange)
         .toList()
       ..sort((a, b) => b.odometer.compareTo(a.odometer));
 
@@ -1124,6 +1126,7 @@ class _FuelAnalyticsSection extends ConsumerWidget {
             records,
             currentMileage: vehicle.currentMileage,
           );
+          final report = FuelAnalyticsReport.fromRecords(records);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1158,6 +1161,24 @@ class _FuelAnalyticsSection extends ConsumerWidget {
                   message: '累積至少 2 筆不同里程的加油紀錄後，會開始計算油耗。',
                 ),
               ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => _FuelAnalyticsReportPage(
+                          vehicle: vehicle,
+                          report: report,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.bar_chart_outlined),
+                  label: const Text('查看油耗報表'),
+                ),
+              ),
             ],
           );
         },
@@ -1205,6 +1226,454 @@ class _FuelAnalyticsSection extends ConsumerWidget {
   String _formatMoney(double value) {
     return '\$${value.toStringAsFixed(0)}';
   }
+}
+
+class _FuelAnalyticsReportPage extends StatelessWidget {
+  const _FuelAnalyticsReportPage({
+    required this.vehicle,
+    required this.report,
+  });
+
+  final Vehicle vehicle;
+  final FuelAnalyticsReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${vehicle.model} 油耗報表'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        children: [
+          _FuelAnalyticsReportView(report: report),
+        ],
+      ),
+    );
+  }
+}
+
+class _FuelAnalyticsReportView extends StatelessWidget {
+  const _FuelAnalyticsReportView({required this.report});
+
+  final FuelAnalyticsReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!report.hasMonthlyEfficiency &&
+        !report.hasMonthlyCost &&
+        !report.hasTripPoints) {
+      return const _AnalyticsHint(
+        message: '累積更多加油紀錄後，會產生月報表與加油習慣圖表。',
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ChartPanel(
+          title: '油耗表現趨勢',
+          subtitle: '每月平均油耗 km/L',
+          child: report.hasMonthlyEfficiency
+              ? _MonthlyEfficiencyLineChart(report: report)
+              : const _EmptyChartHint(message: '至少需要 2 筆不同里程的加油紀錄'),
+        ),
+        const SizedBox(height: 12),
+        _ChartPanel(
+          title: '支出對比',
+          subtitle: '每月加油總金額',
+          child: report.hasMonthlyCost
+              ? _MonthlyFuelCostBarChart(report: report)
+              : const _EmptyChartHint(message: '尚無加油金額資料'),
+        ),
+        const SizedBox(height: 12),
+        _ChartPanel(
+          title: '里程分佈',
+          subtitle: '單次加油里程 vs 油耗',
+          child: report.hasTripPoints
+              ? _FuelTripScatterChart(report: report)
+              : const _EmptyChartHint(message: '至少需要 2 筆不同里程的加油紀錄'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChartPanel extends StatelessWidget {
+  const _ChartPanel({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 210,
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthlyEfficiencyLineChart extends StatelessWidget {
+  const _MonthlyEfficiencyLineChart({required this.report});
+
+  final FuelAnalyticsReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final summaries = report.monthlySummaries;
+    final spots = <FlSpot>[];
+
+    for (var index = 0; index < summaries.length; index++) {
+      final efficiency = summaries[index].averageEfficiency;
+
+      if (efficiency == null) {
+        continue;
+      }
+
+      spots.add(FlSpot(index.toDouble(), efficiency));
+    }
+
+    if (spots.isEmpty) {
+      return const _EmptyChartHint(message: '尚無可計算油耗資料');
+    }
+
+    final maxY = _niceMax(spots.map((spot) => spot.y).reduce(math.max));
+
+    return LineChart(
+      LineChartData(
+        minX: 0,
+        maxX: (summaries.length - 1).clamp(0, 999).toDouble(),
+        minY: 0,
+        maxY: maxY,
+        gridData: FlGridData(
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.55),
+            strokeWidth: 1,
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        titlesData: _monthlyTitlesData(context, summaries),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            preventCurveOverShooting: true,
+            color: colorScheme.primary,
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: FlDotData(
+              getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(
+                radius: 3.5,
+                color: colorScheme.primary,
+                strokeWidth: 2,
+                strokeColor: colorScheme.surface,
+              ),
+            ),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  colorScheme.primary.withValues(alpha: 0.24),
+                  colorScheme.primary.withValues(alpha: 0.02),
+                ],
+              ),
+            ),
+          ),
+        ],
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (_) => colorScheme.inverseSurface,
+            getTooltipItems: (spots) {
+              return spots.map((spot) {
+                return LineTooltipItem(
+                  '${spot.y.toStringAsFixed(1)} km/L',
+                  TextStyle(color: colorScheme.onInverseSurface),
+                );
+              }).toList();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthlyFuelCostBarChart extends StatelessWidget {
+  const _MonthlyFuelCostBarChart({required this.report});
+
+  final FuelAnalyticsReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final summaries = report.monthlySummaries;
+    final maxCost =
+        summaries.map((summary) => summary.fuelCost).fold<double>(0, math.max);
+    final maxY = _niceMax(maxCost);
+
+    return BarChart(
+      BarChartData(
+        minY: 0,
+        maxY: maxY,
+        alignment: BarChartAlignment.spaceAround,
+        gridData: FlGridData(
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.55),
+            strokeWidth: 1,
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        titlesData: _monthlyTitlesData(context, summaries),
+        barGroups: [
+          for (var index = 0; index < summaries.length; index++)
+            BarChartGroupData(
+              x: index,
+              barRods: [
+                BarChartRodData(
+                  toY: summaries[index].fuelCost,
+                  width: 16,
+                  borderRadius: BorderRadius.circular(5),
+                  color: colorScheme.primary,
+                  rodStackItems: [
+                    BarChartRodStackItem(
+                      0,
+                      summaries[index].fuelCost,
+                      colorScheme.primary,
+                    ),
+                  ],
+                  backDrawRodData: BackgroundBarChartRodData(
+                    show: true,
+                    toY: maxY,
+                    color: colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+              ],
+            ),
+        ],
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (_) => colorScheme.inverseSurface,
+            getTooltipItem: (_, __, rod, ___) => BarTooltipItem(
+              '\$${rod.toY.toStringAsFixed(0)}',
+              TextStyle(color: colorScheme.onInverseSurface),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FuelTripScatterChart extends StatelessWidget {
+  const _FuelTripScatterChart({required this.report});
+
+  final FuelAnalyticsReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final points = report.tripPoints;
+    final maxDistance = points.map((point) => point.distance).reduce(math.max);
+    final maxEfficiency =
+        points.map((point) => point.efficiency).reduce(math.max);
+    final maxAmount = points.map((point) => point.amount).reduce(math.max);
+
+    return ScatterChart(
+      ScatterChartData(
+        minX: 0,
+        maxX: _niceMax(maxDistance.toDouble()),
+        minY: 0,
+        maxY: _niceMax(maxEfficiency),
+        clipData: const FlClipData.all(),
+        gridData: FlGridData(
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+            strokeWidth: 1,
+          ),
+          getDrawingVerticalLine: (value) => FlLine(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.28),
+            strokeWidth: 1,
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(),
+          rightTitles: const AxisTitles(),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 42,
+              getTitlesWidget: (value, meta) => _axisLabel(
+                context,
+                value == 0 ? '0' : value.toStringAsFixed(0),
+              ),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              getTitlesWidget: (value, meta) => _axisLabel(
+                context,
+                value == 0 ? '0' : '${value.toStringAsFixed(0)}km',
+              ),
+            ),
+          ),
+        ),
+        scatterSpots: [
+          for (final point in points)
+            ScatterSpot(
+              point.distance.toDouble(),
+              point.efficiency,
+              dotPainter: FlDotCirclePainter(
+                radius: _bubbleRadius(point.amount, maxAmount),
+                color: colorScheme.tertiary.withValues(alpha: 0.78),
+                strokeWidth: 1.5,
+                strokeColor: colorScheme.surface,
+              ),
+            ),
+        ],
+        scatterTouchData: ScatterTouchData(
+          touchTooltipData: ScatterTouchTooltipData(
+            getTooltipColor: (_) => colorScheme.inverseSurface,
+            getTooltipItems: (spot) => ScatterTooltipItem(
+              '${spot.x.toStringAsFixed(0)} km\n${spot.y.toStringAsFixed(1)} km/L',
+              textStyle: TextStyle(color: colorScheme.onInverseSurface),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyChartHint extends StatelessWidget {
+  const _EmptyChartHint({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+      ),
+    );
+  }
+}
+
+FlTitlesData _monthlyTitlesData(
+  BuildContext context,
+  List<MonthlyFuelSummary> summaries,
+) {
+  return FlTitlesData(
+    topTitles: const AxisTitles(),
+    rightTitles: const AxisTitles(),
+    leftTitles: AxisTitles(
+      sideTitles: SideTitles(
+        showTitles: true,
+        reservedSize: 42,
+        getTitlesWidget: (value, meta) => _axisLabel(
+          context,
+          value == 0 ? '0' : value.toStringAsFixed(0),
+        ),
+      ),
+    ),
+    bottomTitles: AxisTitles(
+      sideTitles: SideTitles(
+        showTitles: true,
+        reservedSize: 32,
+        getTitlesWidget: (value, meta) {
+          final index = value.round();
+
+          if (index < 0 || index >= summaries.length || value != index) {
+            return const SizedBox.shrink();
+          }
+
+          return _axisLabel(context, summaries[index].monthLabel);
+        },
+      ),
+    ),
+  );
+}
+
+Widget _axisLabel(BuildContext context, String label) {
+  return Padding(
+    padding: const EdgeInsets.only(top: 4),
+    child: Text(
+      label,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+    ),
+  );
+}
+
+double _niceMax(double value) {
+  if (value <= 0) {
+    return 1;
+  }
+
+  final magnitude =
+      math.pow(10, value.floor().toString().length - 1).toDouble();
+  return (value / magnitude).ceil() * magnitude;
+}
+
+double _bubbleRadius(double amount, double maxAmount) {
+  if (maxAmount <= 0) {
+    return 5;
+  }
+
+  return 5 + (amount / maxAmount).clamp(0.0, 1.0) * 5;
 }
 
 class _RefuelProgressSection extends ConsumerWidget {
@@ -1493,8 +1962,8 @@ class _MaintenanceRecordsContent extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             const _DataHeader(
-              labels: ['項目', '日期', '里程', '金額', '方式'],
-              flexes: [2, 2, 1, 1, 1],
+              labels: ['項目', '日期', '里程', '金額'],
+              flexes: [2, 2, 1, 1],
             ),
             if (records.isEmpty)
               const _EmptySectionHint(message: '尚無保養改裝紀錄')
@@ -1673,6 +2142,10 @@ class _MaintenanceRecordDialogTile extends ConsumerWidget {
                 _InfoChip(
                   icon: Icons.speed_outlined,
                   label: '${record.odometer} km',
+                ),
+                _InfoChip(
+                  icon: Icons.category_outlined,
+                  label: record.maintenanceType.label,
                 ),
                 _InfoChip(
                   icon: Icons.handyman_outlined,
@@ -1865,8 +2338,7 @@ class _MaintenanceRecordRow extends ConsumerWidget {
               preserveFullText: true,
             ),
             _CellText('${record.odometer}'),
-            _CellText('\$${record.amount.toStringAsFixed(0)}'),
-            _CellText(record.serviceType.label),
+            _CellText('\$${record.amount.toStringAsFixed(0)}')
           ],
         ),
       ),

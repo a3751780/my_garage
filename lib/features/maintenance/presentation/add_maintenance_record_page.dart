@@ -31,6 +31,7 @@ class _AddMaintenanceRecordPageState
   final _noteController = TextEditingController();
 
   DateTime _servicedAt = DateTime.now();
+  MaintenanceType _maintenanceType = MaintenanceType.general;
   MaintenanceServiceType _serviceType = MaintenanceServiceType.shop;
   bool _isSaving = false;
   String? _errorMessage;
@@ -45,6 +46,7 @@ class _AddMaintenanceRecordPageState
     if (record != null) {
       _servicedAt = record.servicedAt;
       _itemController.text = record.item;
+      _maintenanceType = record.maintenanceType;
       _dateController.text = _formatDisplayDate(record.servicedAt);
       _odometerController.text = record.odometer.toString();
       _amountController.text = record.amount.toString();
@@ -94,6 +96,31 @@ class _AddMaintenanceRecordPageState
 
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<MaintenanceType>(
+                value: _maintenanceType,
+                decoration: const InputDecoration(
+                  labelText: '保養類型',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                items: MaintenanceType.values
+                    .map(
+                      (type) => DropdownMenuItem(
+                        value: type,
+                        child: Text(type.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _isSaving
+                    ? null
+                    : (value) {
+                        if (value == null) {
+                          return;
+                        }
+
+                        setState(() => _maintenanceType = value);
+                      },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -225,6 +252,7 @@ class _AddMaintenanceRecordPageState
       final input = NewMaintenanceRecordInput(
         vehicleId: widget.vehicle.id,
         item: _itemController.text.trim(),
+        maintenanceType: _maintenanceType,
         servicedAt: _servicedAt,
         odometer: int.parse(_odometerController.text.trim()),
         amount: double.parse(_amountController.text.trim()),

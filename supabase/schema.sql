@@ -151,6 +151,8 @@ create table if not exists public.maintenance_records (
   user_id uuid not null references auth.users(id) on delete cascade,
   vehicle_id uuid not null references public.vehicles(id) on delete cascade,
   item text not null,
+  maintenance_type text not null default 'general'
+    check (maintenance_type in ('general', 'oil_change')),
   serviced_at date not null,
   odometer integer not null check (odometer >= 0),
   amount numeric(12, 2) not null default 0 check (amount >= 0),

@@ -15,12 +15,30 @@ enum MaintenanceServiceType {
   final String label;
 }
 
+enum MaintenanceType {
+  general('general', '一般保養'),
+  oilChange('oil_change', '機油更換');
+
+  const MaintenanceType(this.value, this.label);
+
+  factory MaintenanceType.fromValue(String? value) {
+    return MaintenanceType.values.firstWhere(
+      (type) => type.value == value,
+      orElse: () => MaintenanceType.general,
+    );
+  }
+
+  final String value;
+  final String label;
+}
+
 class MaintenanceRecord {
   const MaintenanceRecord({
     required this.id,
     required this.userId,
     required this.vehicleId,
     required this.item,
+    required this.maintenanceType,
     required this.servicedAt,
     required this.odometer,
     required this.amount,
@@ -35,6 +53,9 @@ class MaintenanceRecord {
       userId: json['user_id'] as String,
       vehicleId: json['vehicle_id'] as String,
       item: json['item'] as String,
+      maintenanceType: MaintenanceType.fromValue(
+        json['maintenance_type'] as String?,
+      ),
       servicedAt: DateTime.parse(json['serviced_at'] as String),
       odometer: json['odometer'] as int,
       amount: (json['amount'] as num).toDouble(),
@@ -50,6 +71,7 @@ class MaintenanceRecord {
   final String userId;
   final String vehicleId;
   final String item;
+  final MaintenanceType maintenanceType;
   final DateTime servicedAt;
   final int odometer;
   final double amount;
@@ -62,6 +84,7 @@ class NewMaintenanceRecordInput {
   const NewMaintenanceRecordInput({
     required this.vehicleId,
     required this.item,
+    required this.maintenanceType,
     required this.servicedAt,
     required this.odometer,
     required this.amount,
@@ -71,6 +94,7 @@ class NewMaintenanceRecordInput {
 
   final String vehicleId;
   final String item;
+  final MaintenanceType maintenanceType;
   final DateTime servicedAt;
   final int odometer;
   final double amount;

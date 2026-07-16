@@ -35,6 +35,7 @@ class MaintenanceRecordsRepository {
       'user_id': userId,
       'vehicle_id': input.vehicleId,
       'item': input.item,
+      'maintenance_type': input.maintenanceType.value,
       'serviced_at': _formatDate(input.servicedAt),
       'odometer': input.odometer,
       'amount': input.amount,
@@ -59,6 +60,7 @@ class MaintenanceRecordsRepository {
         .from(_tableName)
         .update({
           'item': input.item,
+          'maintenance_type': input.maintenanceType.value,
           'serviced_at': _formatDate(input.servicedAt),
           'odometer': input.odometer,
           'amount': input.amount,

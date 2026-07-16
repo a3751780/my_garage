@@ -84,6 +84,46 @@ void main() {
       expect(analytics.remainingMileageToRefuel, isNull);
       expect(analytics.nextRefuelMileage, isNull);
     });
+
+    test('builds monthly report summaries and trip points', () {
+      final report = FuelAnalyticsReport.fromRecords(
+        [
+          _fuelRecord(
+            id: '1',
+            odometer: 1000,
+            fuelVolume: 5,
+            amount: 150,
+            fueledAt: DateTime(2026, 1, 10),
+          ),
+          _fuelRecord(
+            id: '2',
+            odometer: 1200,
+            fuelVolume: 5,
+            amount: 160,
+            fueledAt: DateTime(2026, 2, 10),
+          ),
+          _fuelRecord(
+            id: '3',
+            odometer: 1420,
+            fuelVolume: 5.5,
+            amount: 180,
+            fueledAt: DateTime(2026, 2, 25),
+          ),
+        ],
+      );
+
+      expect(report.monthlySummaries, hasLength(2));
+      expect(report.monthlySummaries[0].monthLabel, '1月');
+      expect(report.monthlySummaries[0].fuelCost, 150);
+      expect(report.monthlySummaries[0].averageEfficiency, isNull);
+      expect(report.monthlySummaries[1].fuelCost, 340);
+      expect(report.monthlySummaries[1].distance, 420);
+      expect(report.monthlySummaries[1].fuelVolume, 10.5);
+      expect(report.monthlySummaries[1].averageEfficiency, 40);
+      expect(report.tripPoints, hasLength(2));
+      expect(report.tripPoints.first.distance, 200);
+      expect(report.tripPoints.first.efficiency, 40);
+    });
   });
 }
 
@@ -92,12 +132,13 @@ FuelRecord _fuelRecord({
   required int odometer,
   required double fuelVolume,
   required double amount,
+  DateTime? fueledAt,
 }) {
   return FuelRecord(
     id: id,
     userId: 'user-id',
     vehicleId: 'vehicle-id',
-    fueledAt: DateTime(2026, 7, 15),
+    fueledAt: fueledAt ?? DateTime(2026, 7, 15),
     odometer: odometer,
     fuelVolume: fuelVolume,
     amount: amount,

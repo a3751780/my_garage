@@ -1,5 +1,160 @@
 import 'fuel_record.dart';
 
+class MonthlyFuelSummary {
+  const MonthlyFuelSummary({
+    required this.year,
+    required this.month,
+    required this.fuelCost,
+    required this.distance,
+    required this.fuelVolume,
+  });
+
+  final int year;
+  final int month;
+  final double fuelCost;
+  final int distance;
+  final double fuelVolume;
+
+  double? get averageEfficiency {
+    if (distance <= 0 || fuelVolume <= 0) {
+      return null;
+    }
+
+    return distance / fuelVolume;
+  }
+
+  String get monthLabel => '$month月';
+}
+
+class FuelEfficiencyTripPoint {
+  const FuelEfficiencyTripPoint({
+    required this.year,
+    required this.month,
+    required this.distance,
+    required this.efficiency,
+    required this.amount,
+  });
+
+  final int year;
+  final int month;
+  final int distance;
+  final double efficiency;
+  final double amount;
+}
+
+class FuelAnalyticsReport {
+  const FuelAnalyticsReport({
+    required this.monthlySummaries,
+    required this.tripPoints,
+  });
+
+  factory FuelAnalyticsReport.fromRecords(List<FuelRecord> records) {
+    final sortedRecords = [...records]
+      ..sort((a, b) => a.odometer.compareTo(b.odometer));
+    final monthData = <String, _MutableMonthlyFuelSummary>{};
+    final tripPoints = <FuelEfficiencyTripPoint>[];
+
+    for (final record in sortedRecords) {
+      final key = _monthKey(record.fueledAt.year, record.fueledAt.month);
+      final summary = monthData.putIfAbsent(
+        key,
+        () => _MutableMonthlyFuelSummary(
+          year: record.fueledAt.year,
+          month: record.fueledAt.month,
+        ),
+      );
+      summary.fuelCost += record.amount;
+    }
+
+    for (var index = 1; index < sortedRecords.length; index++) {
+      final previous = sortedRecords[index - 1];
+      final current = sortedRecords[index];
+      final distance = current.odometer - previous.odometer;
+
+      if (distance <= 0 || current.fuelVolume <= 0) {
+        continue;
+      }
+
+      final efficiency = distance / current.fuelVolume;
+      final key = _monthKey(current.fueledAt.year, current.fueledAt.month);
+      final summary = monthData.putIfAbsent(
+        key,
+        () => _MutableMonthlyFuelSummary(
+          year: current.fueledAt.year,
+          month: current.fueledAt.month,
+        ),
+      );
+      summary.distance += distance;
+      summary.fuelVolume += current.fuelVolume;
+      tripPoints.add(
+        FuelEfficiencyTripPoint(
+          year: current.fueledAt.year,
+          month: current.fueledAt.month,
+          distance: distance,
+          efficiency: efficiency,
+          amount: current.amount,
+        ),
+      );
+    }
+
+    final monthlySummaries = monthData.values
+        .map(
+          (summary) => MonthlyFuelSummary(
+            year: summary.year,
+            month: summary.month,
+            fuelCost: summary.fuelCost,
+            distance: summary.distance,
+            fuelVolume: summary.fuelVolume,
+          ),
+        )
+        .toList()
+      ..sort((a, b) {
+        final yearCompare = a.year.compareTo(b.year);
+
+        if (yearCompare != 0) {
+          return yearCompare;
+        }
+
+        return a.month.compareTo(b.month);
+      });
+
+    return FuelAnalyticsReport(
+      monthlySummaries: monthlySummaries,
+      tripPoints: tripPoints,
+    );
+  }
+
+  final List<MonthlyFuelSummary> monthlySummaries;
+  final List<FuelEfficiencyTripPoint> tripPoints;
+
+  bool get hasMonthlyEfficiency {
+    return monthlySummaries.any((summary) => summary.averageEfficiency != null);
+  }
+
+  bool get hasMonthlyCost {
+    return monthlySummaries.any((summary) => summary.fuelCost > 0);
+  }
+
+  bool get hasTripPoints => tripPoints.isNotEmpty;
+}
+
+class _MutableMonthlyFuelSummary {
+  _MutableMonthlyFuelSummary({
+    required this.year,
+    required this.month,
+  });
+
+  final int year;
+  final int month;
+  double fuelCost = 0;
+  int distance = 0;
+  double fuelVolume = 0;
+}
+
+String _monthKey(int year, int month) {
+  return '$year-${month.toString().padLeft(2, '0')}';
+}
+
 class FuelAnalytics {
   const FuelAnalytics({
     required this.recordCount,
