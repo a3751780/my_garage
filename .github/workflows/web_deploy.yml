@@ -3,24 +3,31 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main  # 當程式碼推送到 main 分支時觸發
+      - main
 
+# 這是解決「上傳失敗」的核心：必須允許寫入 Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# 確保只有一個部署任務在執行，避免衝突
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4 # 已經是 v4，Node 20 警告可忽略或待 GitHub 更新
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.22.2' # 建議填入你目前的 flutter --version 版本
+          # flutter-version: '3.22.2' # 如果不確定版本，可以先註解掉改用最新 stable
 
       - name: Enable Web
         run: flutter config --enable-web
@@ -29,13 +36,13 @@ jobs:
         run: flutter pub get
 
       - name: Build Web
-        # 將 <REPOSITORY_NAME> 替換成你的專案名稱，例如 my_garage
-        # 這確保了圖片和資源路徑在 GitHub Pages 上能正確讀取
+        # 注意：請確認你的 base-href 尾巴有斜線
         run: flutter build web --release --base-href /my_garage/
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v3 # 確保使用 v3
         with:
+          # Flutter Web 編譯後的產物位址
           path: build/web
 
   deploy:
@@ -47,4 +54,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v4 # 確保使用 v4
