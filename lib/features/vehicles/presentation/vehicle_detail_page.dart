@@ -9,7 +9,9 @@ import '../../fuel/data/fuel_record.dart';
 import '../../fuel/data/fuel_analytics.dart';
 import '../../fuel/presentation/add_fuel_record_page.dart';
 import '../../fuel/providers/fuel_records_providers.dart';
+import '../../home_widget/presentation/garage_home_widget_sync.dart';
 import '../../maintenance/data/maintenance_record.dart';
+import '../../maintenance/data/oil_change_status.dart';
 import '../../maintenance/presentation/add_maintenance_record_page.dart';
 import '../../maintenance/providers/oil_change_preferences_provider.dart';
 import '../../maintenance/providers/maintenance_records_providers.dart';
@@ -66,6 +68,7 @@ class _VehicleDetailPageState extends ConsumerState<VehicleDetailPage> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             sliver: SliverList.list(
               children: [
+                GarageHomeWidgetSync(vehicle: _vehicle),
                 _OilChangeProgressSection(vehicle: _vehicle),
                 const SizedBox(height: 16),
                 _RefuelProgressSection(vehicle: _vehicle),
@@ -404,7 +407,12 @@ class _OilChangeProgressSection extends ConsumerWidget {
     return intervalState.when(
       data: (oilChangeInterval) => maintenanceRecordsState.when(
         data: (records) {
-          final lastOilRecord = _findLastOilRecord(records);
+          final status = OilChangeStatus.fromRecords(
+            records: records,
+            currentMileage: vehicle.currentMileage,
+            interval: oilChangeInterval,
+          );
+          final lastOilRecord = status.lastRecord;
 
           if (lastOilRecord == null) {
             return _OilChangeProgressCard.empty(
@@ -417,23 +425,15 @@ class _OilChangeProgressSection extends ConsumerWidget {
             );
           }
 
-          final drivenMileage = vehicle.currentMileage - lastOilRecord.odometer;
-          final safeDrivenMileage = drivenMileage < 0 ? 0 : drivenMileage;
-          final remainingMileage = oilChangeInterval - safeDrivenMileage;
-          final progress = (safeDrivenMileage / oilChangeInterval).clamp(
-            0.0,
-            1.0,
-          );
-
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3),
             child: _OilChangeProgressCard(
               interval: oilChangeInterval,
               lastChangedMileage: lastOilRecord.odometer,
               currentMileage: vehicle.currentMileage,
-              drivenMileage: safeDrivenMileage,
-              remainingMileage: remainingMileage,
-              progress: progress,
+              drivenMileage: status.drivenMileage,
+              remainingMileage: status.remainingMileage!,
+              progress: status.progress,
               onChangeInterval: () => _showIntervalDialog(
                 context,
                 ref,
@@ -512,15 +512,6 @@ class _OilChangeProgressSection extends ConsumerWidget {
           interval: interval,
         );
     ref.invalidate(oilChangeIntervalProvider(vehicle.id));
-  }
-
-  MaintenanceRecord? _findLastOilRecord(List<MaintenanceRecord> records) {
-    final oilRecords = records
-        .where((record) => record.maintenanceType == MaintenanceType.oilChange)
-        .toList()
-      ..sort((a, b) => b.odometer.compareTo(a.odometer));
-
-    return oilRecords.isEmpty ? null : oilRecords.first;
   }
 }
 

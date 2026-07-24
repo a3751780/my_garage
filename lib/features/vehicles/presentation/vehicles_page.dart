@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/pull_to_refresh.dart';
 import '../data/vehicle.dart';
 import '../providers/vehicles_providers.dart';
 import 'add_vehicle_page.dart';
@@ -11,10 +12,12 @@ class VehiclesPage extends ConsumerWidget {
     super.key,
     required this.onSignOut,
     required this.onChangePassword,
+    required this.onOpenTrips,
   });
 
   final VoidCallback onSignOut;
   final VoidCallback onChangePassword;
+  final VoidCallback onOpenTrips;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,6 +28,11 @@ class VehiclesPage extends ConsumerWidget {
         title: const Text('My Garage'),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: '騎旅日誌',
+            onPressed: onOpenTrips,
+            icon: const Icon(Icons.map_outlined),
+          ),
           IconButton(
             tooltip: '修改密碼',
             onPressed: onChangePassword,
@@ -37,7 +45,7 @@ class VehiclesPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
+      body: PullToRefresh(
         onRefresh: () =>
             ref.read(vehiclesViewModelProvider.notifier).loadVehicles(),
         child: vehiclesState.when(
@@ -71,6 +79,7 @@ class _VehiclesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       itemCount: vehicles.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),

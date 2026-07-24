@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../trips/presentation/trip_calendar_page.dart';
 import '../../vehicles/presentation/vehicles_page.dart';
 
 class GarageHomePage extends ConsumerWidget {
@@ -13,6 +14,11 @@ class GarageHomePage extends ConsumerWidget {
     final repository = ref.watch(authRepositoryProvider);
 
     return VehiclesPage(
+      onOpenTrips: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const TripCalendarPage(),
+        ),
+      ),
       onChangePassword: () => _showChangePasswordDialog(context, repository),
       onSignOut: repository.signOut,
     );

@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/config/firebase_initializer.dart';
 import 'core/config/supabase_config.dart';
 import 'features/auth/presentation/login_page.dart';
 import 'features/garage/presentation/garage_home_page.dart';
@@ -11,6 +12,17 @@ import 'shared/providers/supabase_providers.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
+  await FirebaseInitializer.initialize();
+
+  // 如果要推到web用的
+  // await dotenv.load(
+  //   isOptional: true,
+  //   mergeWith: const {
+  //     'SUPABASE_URL': String.fromEnvironment('SUPABASE_URL'),
+  //     'SUPABASE_PUBLISHABLE_KEY': String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY'),
+  //     'SUPABASE_ANON_KEY': String.fromEnvironment('SUPABASE_ANON_KEY'),
+  //   },
+  // );
 
   final supabaseConfig = SupabaseConfig.fromDotEnv();
   if (supabaseConfig.isConfigured) {

@@ -36,8 +36,11 @@ jobs:
         run: flutter pub get
 
       - name: Build Web
-        # 注意：請確認你的 base-href 尾巴有斜線
-        run: flutter build web --release --base-href /my_garage/
+        run: |
+          flutter build web --release --base-href /my_garage/ \
+          --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+          --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+      
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3 # 確保使用 v3

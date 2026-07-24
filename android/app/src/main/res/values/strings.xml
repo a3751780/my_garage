@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="garage_status_widget_description">顯示車輛預估可騎里程與機油更換狀態</string>
+</resources>
