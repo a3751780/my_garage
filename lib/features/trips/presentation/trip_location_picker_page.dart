@@ -10,9 +10,13 @@ class TripLocationSelection {
     required this.name,
     required this.latitude,
     required this.longitude,
+    this.placeId,
+    this.address,
   });
 
   final String name;
+  final String? placeId;
+  final String? address;
   final double latitude;
   final double longitude;
 }
@@ -21,11 +25,15 @@ class TripLocationPickerPage extends StatefulWidget {
   const TripLocationPickerPage({
     super.key,
     this.initialName,
+    this.initialPlaceId,
+    this.initialAddress,
     this.initialLatitude,
     this.initialLongitude,
   });
 
   final String? initialName;
+  final String? initialPlaceId;
+  final String? initialAddress;
   final double? initialLatitude;
   final double? initialLongitude;
 
@@ -40,6 +48,8 @@ class _TripLocationPickerPageState extends State<TripLocationPickerPage> {
   late final GooglePlacesService _placesService;
   late LatLng _selectedLocation;
   late String _selectedName;
+  String? _selectedPlaceId;
+  String? _selectedAddress;
   GoogleMapController? _mapController;
   List<GooglePlaceResult> _placeResults = const [];
   bool _isResolvingName = false;
@@ -57,6 +67,8 @@ class _TripLocationPickerPageState extends State<TripLocationPickerPage> {
       widget.initialLongitude ?? _defaultLocation.longitude,
     );
     _selectedName = widget.initialName ?? '台北市';
+    _selectedPlaceId = widget.initialPlaceId;
+    _selectedAddress = widget.initialAddress;
     _searchController.text = widget.initialName ?? '';
 
     if (widget.initialName == null) {
@@ -101,6 +113,8 @@ class _TripLocationPickerPageState extends State<TripLocationPickerPage> {
               setState(() {
                 _selectedLocation = position;
                 _selectedName = _formatLatLng(position);
+                _selectedPlaceId = null;
+                _selectedAddress = null;
                 _searchController.clear();
               });
               _loadNearbyPlaces(position);
@@ -195,6 +209,8 @@ class _TripLocationPickerPageState extends State<TripLocationPickerPage> {
                           Navigator.of(context).pop(
                             TripLocationSelection(
                               name: _selectedName,
+                              placeId: _selectedPlaceId,
+                              address: _selectedAddress,
                               latitude: _selectedLocation.latitude,
                               longitude: _selectedLocation.longitude,
                             ),
@@ -333,6 +349,8 @@ class _TripLocationPickerPageState extends State<TripLocationPickerPage> {
     setState(() {
       _selectedLocation = place.latLng;
       _selectedName = place.name;
+      _selectedPlaceId = place.id;
+      _selectedAddress = place.address;
       _searchController.text = place.name;
     });
 
@@ -359,13 +377,19 @@ class _TripLocationPickerPageState extends State<TripLocationPickerPage> {
       final name = _formatPlacemark(placemarks.first);
       setState(() {
         _selectedName = name.isEmpty ? _formatLatLng(location) : name;
+        _selectedPlaceId = null;
+        _selectedAddress = _selectedName;
       });
     } catch (_) {
       if (!mounted) {
         return;
       }
 
-      setState(() => _selectedName = _formatLatLng(location));
+      setState(() {
+        _selectedName = _formatLatLng(location);
+        _selectedPlaceId = null;
+        _selectedAddress = null;
+      });
     } finally {
       if (mounted) {
         setState(() => _isResolvingName = false);

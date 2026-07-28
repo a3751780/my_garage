@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../trip_routes/presentation/trip_routes_page.dart';
 import '../../trips/presentation/trip_calendar_page.dart';
 import '../../vehicles/presentation/vehicles_page.dart';
 
@@ -17,6 +18,11 @@ class GarageHomePage extends ConsumerWidget {
       onOpenTrips: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => const TripCalendarPage(),
+        ),
+      ),
+      onOpenRoutes: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const TripRoutesPage(),
         ),
       ),
       onChangePassword: () => _showChangePasswordDialog(context, repository),

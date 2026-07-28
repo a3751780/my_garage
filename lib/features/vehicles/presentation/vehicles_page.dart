@@ -13,11 +13,13 @@ class VehiclesPage extends ConsumerWidget {
     required this.onSignOut,
     required this.onChangePassword,
     required this.onOpenTrips,
+    required this.onOpenRoutes,
   });
 
   final VoidCallback onSignOut;
   final VoidCallback onChangePassword;
   final VoidCallback onOpenTrips;
+  final VoidCallback onOpenRoutes;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,23 +29,12 @@ class VehiclesPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('My Garage'),
         centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: '騎旅日誌',
-            onPressed: onOpenTrips,
-            icon: const Icon(Icons.map_outlined),
-          ),
-          IconButton(
-            tooltip: '修改密碼',
-            onPressed: onChangePassword,
-            icon: const Icon(Icons.lock_reset_outlined),
-          ),
-          IconButton(
-            tooltip: '登出',
-            onPressed: onSignOut,
-            icon: const Icon(Icons.logout),
-          ),
-        ],
+      ),
+      drawer: _GarageNavigationDrawer(
+        onOpenTrips: onOpenTrips,
+        onOpenRoutes: onOpenRoutes,
+        onChangePassword: onChangePassword,
+        onSignOut: onSignOut,
       ),
       body: PullToRefresh(
         onRefresh: () =>
@@ -67,6 +58,139 @@ class VehiclesPage extends ConsumerWidget {
         },
         child: const Icon(Icons.add),
       ),
+    );
+  }
+}
+
+class _GarageNavigationDrawer extends StatelessWidget {
+  const _GarageNavigationDrawer({
+    required this.onOpenTrips,
+    required this.onOpenRoutes,
+    required this.onChangePassword,
+    required this.onSignOut,
+  });
+
+  final VoidCallback onOpenTrips;
+  final VoidCallback onOpenRoutes;
+  final VoidCallback onChangePassword;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.motorcycle_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'My Garage',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '車庫與騎旅管理',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            _GarageNavigationTile(
+              icon: Icons.map_outlined,
+              title: '騎旅日誌',
+              onTap: () => _closeDrawerAndRun(context, onOpenTrips),
+            ),
+            _GarageNavigationTile(
+              icon: Icons.alt_route,
+              title: '騎旅路線',
+              onTap: () => _closeDrawerAndRun(context, onOpenRoutes),
+            ),
+            _GarageNavigationTile(
+              icon: Icons.lock_reset_outlined,
+              title: '修改密碼',
+              onTap: () => _closeDrawerAndRun(context, onChangePassword),
+            ),
+            const Spacer(),
+            const Divider(height: 1),
+            _GarageNavigationTile(
+              icon: Icons.logout,
+              title: '登出',
+              isDestructive: true,
+              onTap: () => _closeDrawerAndRun(context, onSignOut),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _closeDrawerAndRun(BuildContext context, VoidCallback action) {
+    Navigator.of(context).pop();
+    action();
+  }
+}
+
+class _GarageNavigationTile extends StatelessWidget {
+  const _GarageNavigationTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = isDestructive ? colorScheme.error : colorScheme.onSurface;
+
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }
