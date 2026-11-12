@@ -95,12 +95,13 @@ class _AddFuelRecordPageState extends ConsumerState<AddFuelRecordPage> {
                 controller: _odometerController,
                 keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '里程',
                   hintText: '公里',
-                  prefixIcon: Icon(Icons.speed_outlined),
+                  helperText: '目前里程：${widget.vehicle.currentMileage} 公里',
+                  prefixIcon: const Icon(Icons.speed_outlined),
                 ),
-                validator: _validatePositiveInt,
+                validator: _validateOdometer,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -221,10 +222,11 @@ class _AddFuelRecordPageState extends ConsumerState<AddFuelRecordPage> {
     });
 
     try {
+      final odometer = int.parse(_odometerController.text.trim());
       final input = NewFuelRecordInput(
         vehicleId: widget.vehicle.id,
         fueledAt: _fueledAt,
-        odometer: int.parse(_odometerController.text.trim()),
+        odometer: odometer,
         fuelVolume: double.parse(_fuelVolumeController.text.trim()),
         amount: double.parse(_amountController.text.trim()),
         fuelType: _fuelType,
@@ -236,11 +238,23 @@ class _AddFuelRecordPageState extends ConsumerState<AddFuelRecordPage> {
       final record = widget.record;
       if (record == null) {
         await ref.read(fuelRecordsRepositoryProvider).addFuelRecord(input);
+        if (odometer > widget.vehicle.currentMileage) {
+          await ref.read(vehiclesRepositoryProvider).updateCurrentMileage(
+                vehicleId: widget.vehicle.id,
+                currentMileage: odometer,
+              );
+        }
       } else {
         await ref.read(fuelRecordsRepositoryProvider).updateFuelRecord(
               recordId: record.id,
               input: input,
             );
+        if (odometer > widget.vehicle.currentMileage) {
+          await ref.read(vehiclesRepositoryProvider).updateCurrentMileage(
+                vehicleId: widget.vehicle.id,
+                currentMileage: odometer,
+              );
+        }
       }
 
       ref.invalidate(fuelRecordsProvider(widget.vehicle.id));
@@ -259,11 +273,15 @@ class _AddFuelRecordPageState extends ConsumerState<AddFuelRecordPage> {
     }
   }
 
-  String? _validatePositiveInt(String? value) {
+  String? _validateOdometer(String? value) {
     final number = int.tryParse(value?.trim() ?? '');
 
     if (number == null || number < 0) {
       return '請輸入 0 以上的整數';
+    }
+
+    if (!_isEditing && number < widget.vehicle.currentMileage) {
+      return '里程不能低於目前里程 (${widget.vehicle.currentMileage} 公里)';
     }
 
     return null;

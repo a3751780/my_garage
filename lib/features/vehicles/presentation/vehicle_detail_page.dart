@@ -45,6 +45,22 @@ class _VehicleDetailPageState extends ConsumerState<VehicleDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<List<Vehicle>>>(vehiclesViewModelProvider, (_, next) {
+      final vehicles = next.valueOrNull;
+      if (vehicles != null) {
+        final current = vehicles.where((v) => v.id == _vehicle.id).firstOrNull;
+        if (current != null && current != _vehicle) {
+          setState(() => _vehicle = current);
+        }
+      }
+    });
+
+    final vehiclesState = ref.watch(vehiclesViewModelProvider);
+    final vehicle = vehiclesState.valueOrNull
+            ?.where((v) => v.id == _vehicle.id)
+            .firstOrNull ??
+        _vehicle;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -55,9 +71,9 @@ class _VehicleDetailPageState extends ConsumerState<VehicleDetailPage> {
             backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
             foregroundColor: Colors.white,
             flexibleSpace: _VehicleFlexibleSpace(
-              title: _vehicle.model,
+              title: vehicle.model,
               header: _VehicleHeader(
-                vehicle: _vehicle,
+                vehicle: vehicle,
                 isUpdatingCover: _isUpdatingCover,
                 onChangeCoverImage: _changeCoverImage,
                 onUpdateMileage: _showUpdateMileageDialog,
@@ -68,16 +84,16 @@ class _VehicleDetailPageState extends ConsumerState<VehicleDetailPage> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             sliver: SliverList.list(
               children: [
-                GarageHomeWidgetSync(vehicle: _vehicle),
-                _OilChangeProgressSection(vehicle: _vehicle),
+                GarageHomeWidgetSync(vehicle: vehicle),
+                _OilChangeProgressSection(vehicle: vehicle),
                 const SizedBox(height: 16),
-                _RefuelProgressSection(vehicle: _vehicle),
+                _RefuelProgressSection(vehicle: vehicle),
                 const SizedBox(height: 16),
-                _FuelAnalyticsSection(vehicle: _vehicle),
+                _FuelAnalyticsSection(vehicle: vehicle),
                 const SizedBox(height: 16),
-                _FuelRecordsSection(vehicle: _vehicle),
+                _FuelRecordsSection(vehicle: vehicle),
                 const SizedBox(height: 16),
-                _MaintenanceRecordsSection(vehicle: _vehicle),
+                _MaintenanceRecordsSection(vehicle: vehicle),
               ],
             ),
           ),
@@ -272,122 +288,156 @@ class _VehicleHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 230,
-            child: Stack(
-              fit: StackFit.expand,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxHeight = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : _vehicleHeaderExpandedHeight;
+        final imageHeight = math.min(210.0, maxHeight * 0.56);
+
+        return SizedBox(
+          height: maxHeight,
+          child: Material(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                vehicle.coverImageUrl == null
-                    ? ColoredBox(
-                        color: colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.motorcycle_rounded,
-                          size: 64,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      )
-                    : Image.network(
-                        vehicle.coverImageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => ColoredBox(
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.broken_image_outlined,
-                            color: colorScheme.onSurfaceVariant,
+                SizedBox(
+                  height: imageHeight,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      vehicle.coverImageUrl == null
+                          ? ColoredBox(
+                              color: colorScheme.surfaceContainerHighest,
+                              child: Icon(
+                                Icons.motorcycle_rounded,
+                                size: 64,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            )
+                          : Image.network(
+                              vehicle.coverImageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => ColoredBox(
+                                color: colorScheme.surfaceContainerHighest,
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.12),
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.24),
+                            ],
                           ),
                         ),
                       ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.12),
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.24),
-                      ],
-                    ),
+                      Positioned(
+                        right: 12,
+                        bottom: 12,
+                        child: FilledButton.icon(
+                          onPressed:
+                              isUpdatingCover ? null : onChangeCoverImage,
+                          icon: isUpdatingCover
+                              ? const SizedBox.square(
+                                  dimension: 16,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.photo_camera_outlined),
+                          label: Text(isUpdatingCover ? '更新中' : '更換封面'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Positioned(
-                  right: 12,
-                  bottom: 12,
-                  child: FilledButton.icon(
-                    onPressed: isUpdatingCover ? null : onChangeCoverImage,
-                    icon: isUpdatingCover
-                        ? const SizedBox.square(
-                            dimension: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.photo_camera_outlined),
-                    label: Text(isUpdatingCover ? '更新中' : '更換封面'),
+                Expanded(
+                  child: ClipRect(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vehicle.model,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              physics: const NeverScrollableScrollPhysics(),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 8,
+                                    children: [
+                                      _InfoChip(
+                                        icon: Icons.flag_outlined,
+                                        label:
+                                            '初始 ${vehicle.initialMileage} km',
+                                      ),
+                                      _InfoChip(
+                                        icon: Icons.speed_outlined,
+                                        label:
+                                            '目前 ${vehicle.currentMileage} km',
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 8,
+                                    children: [
+                                      _InfoChip(
+                                        icon: Icons.calendar_month_outlined,
+                                        label: '${vehicle.year}',
+                                      ),
+                                      _InfoChip(
+                                        icon: Icons.payments_outlined,
+                                        label:
+                                            '\$${vehicle.acquisitionCost.toStringAsFixed(0)}',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: OutlinedButton.icon(
+                              onPressed: onUpdateMileage,
+                              icon: const Icon(Icons.edit_road_outlined),
+                              label: const Text('更新目前里程'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(
-            height: _vehicleHeaderExpandedHeight - 200,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    vehicle.model,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: [
-                      _InfoChip(
-                        icon: Icons.flag_outlined,
-                        label: '初始 ${vehicle.initialMileage} km',
-                      ),
-                      _InfoChip(
-                        icon: Icons.speed_outlined,
-                        label: '目前 ${vehicle.currentMileage} km',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 12, runSpacing: 8, children: [
-                    _InfoChip(
-                      icon: Icons.calendar_month_outlined,
-                      label: '${vehicle.year}',
-                    ),
-                    _InfoChip(
-                      icon: Icons.payments_outlined,
-                      label: '\$${vehicle.acquisitionCost.toStringAsFixed(0)}',
-                    ),
-                  ]),
-                  const Spacer(),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: OutlinedButton.icon(
-                      onPressed: onUpdateMileage,
-                      icon: const Icon(Icons.edit_road_outlined),
-                      label: const Text('更新目前里程'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -1122,9 +1172,7 @@ class _FuelAnalyticsSection extends ConsumerWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
+              _MetricGrid(
                 children: [
                   _MetricTile(
                     label: '單次油耗',
@@ -1307,7 +1355,7 @@ class _ChartPanel extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(8),
@@ -2444,8 +2492,7 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return SizedBox(
-      width: 148,
+    return SizedBox.expand(
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest,
@@ -2454,15 +2501,20 @@ class _MetricTile extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 8),
               Text(
                 value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -2471,6 +2523,33 @@ class _MetricTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MetricGrid extends StatelessWidget {
+  const _MetricGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 10.0;
+        final tileWidth = (constraints.maxWidth - spacing) / 2;
+        final tileHeight = tileWidth.clamp(76.0, 96.0);
+
+        return GridView.count(
+          crossAxisCount: 2,
+          mainAxisSpacing: spacing,
+          crossAxisSpacing: spacing,
+          childAspectRatio: tileWidth / tileHeight,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: children,
+        );
+      },
     );
   }
 }

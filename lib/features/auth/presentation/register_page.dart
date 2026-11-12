@@ -23,21 +23,6 @@ class RegisterPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 76,
-                    height: 76,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(
-                      Icons.motorcycle_outlined,
-                      size: 42,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
                   Text(
                     '加入 My Garage',
                     textAlign: TextAlign.center,
